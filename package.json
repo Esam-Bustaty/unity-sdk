@@ -4,6 +4,6 @@
   "displayName":"IBM Watson SDK",
   "description":"Use this SDK to build Watson-powered applications in Unity.",
   "dependencies":{
-    "com.ibm.cloud-sdk-core":"git://github.com/Esam-Bustaty/unity-sdk-core#feat/upm-support"
+    "com.ibm.cloud-sdk-core":"1.2.0"
   }
 }
