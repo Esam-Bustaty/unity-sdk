@@ -37,7 +37,7 @@ namespace IBM.Watson.SpeechToText.V1
         /// <summary>
         /// How often to send a message to the web socket to keep it alive.
         /// </summary>
-        private const float WsKeepAliveInterval = 20.0f;
+        private const float WsKeepAliveInterval = 18.0f;
         /// <summary>
         /// If no listen state is received after start is sent within this time, we will timeout
         /// and stop listening.
@@ -81,6 +81,7 @@ namespace IBM.Watson.SpeechToText.V1
         private bool _isListening = false;
         private Queue<AudioData> _listenRecordings = new Queue<AudioData>();
         private int _keepAliveRoutine = 0;             // ID of the keep alive co-routine
+        private AudioClip _keepAliveClip;
         private DateTime _lastKeepAlive = DateTime.Now;
         private DateTime _lastStartSent = DateTime.Now;
         private string _recognizeModel = "en-US_BroadbandModel";   // ID of the model to use.
@@ -398,6 +399,7 @@ namespace IBM.Watson.SpeechToText.V1
 
                 if (!DetectSilence || _silenceDuration < _silenceCutoff)
                 {
+                    _lastKeepAlive = DateTime.Now;
                     if (_listenActive)
                     {
                         _listenSocket.Send(new WSConnector.BinaryMessage(AudioClipUtil.GetL16(clip.Clip)));
@@ -460,6 +462,8 @@ namespace IBM.Watson.SpeechToText.V1
                 Runnable.Stop(_keepAliveRoutine);
                 _keepAliveRoutine = 0;
             }
+
+            DestroyKeepAliveClip();
 
             _listenRecordings.Clear();
             _listenCallback = null;
@@ -593,28 +597,38 @@ namespace IBM.Watson.SpeechToText.V1
         // This keeps the WebSocket connected when we are not sending any data.
         private IEnumerator KeepAlive()
         {
+            //  Temporary clip to use for KeepAlive
+            //  TODO: Generate small sound clip to send to the service to keep alive.
+            _keepAliveClip = Resources.Load<AudioClip>("highHat");
             while (_listenSocket != null)
             {
                 yield return null;
 
                 if ((DateTime.Now - _lastKeepAlive).TotalSeconds > WsKeepAliveInterval)
                 {
-                    //  Temporary clip to use for KeepAlive
-                    //  TODO: Generate small sound clip to send to the service to keep alive.
-                    AudioClip _keepAliveClip = Resources.Load<AudioClip>("highHat");
                     while (_keepAliveClip.loadState != AudioDataLoadState.Loaded)
                         yield return null;
 
 #if ENABLE_DEBUGGING
                     Log.Debug("SpeechToText.KeepAlive()", "Sending keep alive.");
 #endif
-                    _listenSocket.Send(new WSConnector.BinaryMessage(AudioClipUtil.GetL16(_keepAliveClip)));
-                    _keepAliveClip = null;
+                    if (_listenActive)
+                        _listenSocket.Send(new WSConnector.BinaryMessage(AudioClipUtil.GetL16(_keepAliveClip)));
 
                     _lastKeepAlive = DateTime.Now;
                 }
             }
+            DestroyKeepAliveClip();
             Log.Debug("SpeechToText.KeepAlive()", "KeepAlive exited.");
+        }
+
+        private void DestroyKeepAliveClip()
+        {
+            if (_keepAliveClip)
+            {
+                UnityEngine.Object.Destroy(_keepAliveClip);
+                _keepAliveClip = null;
+            }
         }
 
         private void OnListenMessage(WSConnector.Message msg)
