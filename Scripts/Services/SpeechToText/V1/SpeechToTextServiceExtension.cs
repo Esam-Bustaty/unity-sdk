@@ -463,7 +463,7 @@ namespace IBM.Watson.SpeechToText.V1
                 _keepAliveRoutine = 0;
             }
 
-            DestroyKeepAliveClip();
+            UnloadKeepAliveClip();
 
             _listenRecordings.Clear();
             _listenCallback = null;
@@ -618,15 +618,15 @@ namespace IBM.Watson.SpeechToText.V1
                     _lastKeepAlive = DateTime.Now;
                 }
             }
-            DestroyKeepAliveClip();
+            UnloadKeepAliveClip();
             Log.Debug("SpeechToText.KeepAlive()", "KeepAlive exited.");
         }
 
-        private void DestroyKeepAliveClip()
+        private void UnloadKeepAliveClip()
         {
             if (_keepAliveClip)
             {
-                UnityEngine.Object.Destroy(_keepAliveClip);
+                Resources.UnloadAsset(_keepAliveClip);
                 _keepAliveClip = null;
             }
         }
